@@ -3,6 +3,7 @@ import { Scene } from "phaser";
 import { debugDraw } from "../utils/debug";
 import { createLizardAnims } from "../anims/EnemyAnims";
 import { createCharaterAnims } from "../anims/CharacterAnims";
+import Lizard from "../enemies/Lizard";
 
 export class Game extends Scene {
     camera: Phaser.Cameras.Scene2D.Camera;
@@ -13,6 +14,7 @@ export class Game extends Scene {
     lizard: Phaser.Physics.Arcade.Sprite;
     wallLayer!: Phaser.Tilemaps.TilemapLayer;
 
+    private hit = 0
     constructor() {
         super("Game");
     }
@@ -22,6 +24,10 @@ export class Game extends Scene {
     }
 
     create() {
+
+        createLizardAnims(this.anims)
+        createCharaterAnims(this.anims)
+
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(0x140129);
 
@@ -33,27 +39,61 @@ export class Game extends Scene {
         this.wallLayer = map.createLayer("walls", tileset);
         this.wallLayer?.setCollisionByProperty({ collides: true })
 
-        debugDraw(this.wallLayer, this)
+        // debugDraw(this.wallLayer, this)
 
         this.faune = this.physics.add.sprite(128, 128, 'faune', 'walk-down-3.png')
         this.faune.body?.setSize(this.faune.width * 0.5, this.faune.height * 0.8)
 
-        createCharaterAnims(this.anims)
 
-        this.faune.anims.play('faune-idle-side')
+        this.faune.anims.play('faune-idle-down')
 
+        this.camera.startFollow(this.faune, true)
 
-        this.lizard = this.physics.add.sprite(255, 128, 'lizard', 'lizard_m_idle_anim_f0.png')
-        // this.faune.body?.setSize(this.faune.width * 0.5, this.faune.height * 0.8)
-        createLizardAnims(this.anims)
+        const lizards = this.physics.add.group({
+            classType: Lizard,
+            createCallback: (go) => {
+                const lizGo = go as Lizard
+                lizGo.body.onCollide = true
+            }
+        })
 
-        this.lizard.anims.play('lizard-idle')
+        lizards.get(255, 128, 'lizard')
+
 
         this.physics.add.collider(this.faune, this.wallLayer)
+        this.physics.add.collider(lizards, this.wallLayer)
+
+        this.physics.add.collider(
+            lizards,
+            this.faune,
+            this.handlePlayerLizardCollison,
+            undefined,
+            this
+        )
+
         EventBus.emit("current-scene-ready", this);
-        this.camera.startFollow(this.faune, true)
     }
+
+    private handlePlayerLizardCollison(obj1: Phaser.GameObjects.GameObject, obj2: Phaser.GameObjects.GameObject) {
+        const lizard = obj2 as Lizard
+        const dx = this.faune.x - lizard.x
+        const dy = this.faune.y - lizard.y
+
+        const dir = new Phaser.Math.Vector2(dx, dy).normalize().scale(200)
+        this.faune.setVelocity(dir.x, dir.y)
+
+        this.hit = 1
+
+    }
+
     update(time: number, delta: number): void {
+        if (this.hit > 0) {
+            ++this.hit
+            if (this.hit > 10) {
+                this.hit = 0
+            }
+            return
+        }
         if (!this.cursor || !this.faune) return
 
         const speed = 100

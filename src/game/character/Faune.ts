@@ -15,13 +15,19 @@ declare global {
 
 enum HealthState {
     IDLE,
-    DAMAGE
+    DAMAGE,
+    DEAD
 }
 
 export default class Faune extends Phaser.Physics.Arcade.Sprite {
 
     private healthState = HealthState.IDLE
     private damageTime = 0
+    private _health = 3
+
+    get health() {
+        return this._health
+    }
 
     constructor(
         scene: Phaser.Scene,
@@ -36,6 +42,7 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite {
     }
 
     handleDamage(dir: Phaser.Math.Vector2) {
+        if (this._health <= 0) return
         if (this.healthState === HealthState.DAMAGE) return
 
         this.setVelocity(dir.x, dir.y)
@@ -43,6 +50,14 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite {
 
         this.healthState = HealthState.DAMAGE
         this.damageTime = 0
+
+        --this._health
+
+        if (this._health <= 0) {
+            //gameover
+            this.healthState = HealthState.DEAD
+            this.play('faune-faint')
+        }
     }
 
     preUpdate(t: number, dt: number) {
@@ -65,7 +80,7 @@ export default class Faune extends Phaser.Physics.Arcade.Sprite {
     update(cursor: Phaser.Types.Input.Keyboard.CursorKeys) {
         if (!cursor) return
 
-        if (this.healthState === HealthState.DAMAGE) return
+        if (this.healthState === HealthState.DAMAGE || this.healthState === HealthState.DEAD) return
 
         const speed = 100
         if (cursor.left.isDown) {

@@ -14,5 +14,4 @@ export const createLizardAnims = (anims: Phaser.Animations.AnimationManager) => 
         repeat: -1,
         frameRate: 10
     })
-
 }
